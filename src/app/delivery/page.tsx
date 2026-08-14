@@ -24,19 +24,54 @@ function shipping(order: Order) {
     : order.domestic_shipping;
 }
 
-function daysSince(value?: string | null) {
+function parseDate(value?: string | null) {
   if (!value) return null;
-  const start = new Date(`${value.slice(0, 10)}T00:00:00`);
+
+  const raw = String(value).trim();
+  if (!raw) return null;
+
+  const normalized = raw
+    .replace(/\./g, "-")
+    .replace(/\//g, "-")
+    .replace(/\s+/g, " ")
+    .trim();
+
+  const ymd = normalized.match(/^(\d{4})-(\d{1,2})-(\d{1,2})/);
+  if (ymd) {
+    const year = Number(ymd[1]);
+    const month = Number(ymd[2]);
+    const day = Number(ymd[3]);
+    const parsed = new Date(year, month - 1, day);
+    return Number.isNaN(parsed.getTime()) ? null : parsed;
+  }
+
+  const parsed = new Date(raw);
+  return Number.isNaN(parsed.getTime()) ? null : parsed;
+}
+
+function daysSince(value?: string | null) {
+  const start = parseDate(value);
+  if (!start) return null;
+
+  start.setHours(0, 0, 0, 0);
   const today = new Date();
   today.setHours(0, 0, 0, 0);
-  return Math.max(0, Math.floor((today.getTime() - start.getTime()) / 86400000));
+
+  const diff = Math.floor((today.getTime() - start.getTime()) / 86400000);
+  if (!Number.isFinite(diff)) return null;
+
+  return Math.max(0, diff);
 }
 
 function dateText(value?: string | null) {
-  if (!value) return "-";
-  const d = new Date(value);
-  if (Number.isNaN(d.getTime())) return value.slice(0, 10);
-  return new Intl.DateTimeFormat("ko-KR", { year: "numeric", month: "2-digit", day: "2-digit" }).format(d);
+  const d = parseDate(value);
+  if (!d) return value ? String(value) : "-";
+
+  return new Intl.DateTimeFormat("ko-KR", {
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(d);
 }
 
 function statusText(value?: string | null) {
@@ -110,8 +145,10 @@ export default function DeliveryPage() {
         <div className="delivery-list">
           {filtered.map((order) => {
             const s = shipping(order);
-            const days = daysSince(order.first_order_date || order.created_at);
+            const firstDate = order.first_order_date || order.created_at;
+            const days = daysSince(firstDate);
             const isKeep = order.order_status === "kept";
+
             return (
               <article className="delivery-card" key={order.order_id}>
                 <div className="delivery-card-top">
@@ -128,7 +165,7 @@ export default function DeliveryPage() {
                 </div>
 
                 <dl className="delivery-info">
-                  <div><dt>최초주문일</dt><dd>{dateText(order.first_order_date || order.created_at)}</dd></div>
+                  <div><dt>최초주문일</dt><dd>{dateText(firstDate)}</dd></div>
                   <div><dt>배송상태</dt><dd><span className="status-dot" />{statusText(s?.shipping_status)}</dd></div>
                   <div><dt>운송장</dt><dd className="tracking">{s?.tracking_number || "아직 등록 전"}</dd></div>
                   <div><dt>KEEP 여부</dt><dd>{isKeep ? "KEEP 중" : "아니오"}</dd></div>
