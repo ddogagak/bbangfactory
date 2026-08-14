@@ -27,7 +27,10 @@ export default function DeliveryPage(){
     <summary className="delivery-row-summary">
      <span className="day-badge">+ {days===null?"-":days}일</span>
      <div className="summary-nickname"><span className="tiny-label">NICKNAME</span><strong>{order.nickname||"닉네임 없음"}</strong></div>
-     <span className="summary-status-stack"><span><i className="status-dot"/>주문 {currentOrderStatus}</span><span><i className="status-dot request-dot"/>요청 {currentRequestStatus}</span></span>
+     <span className="summary-status-stack">
+      <span><i className="status-dot"/><span className="status-label">주문상태</span><b className="status-value">{currentOrderStatus}</b></span>
+      <span><i className="status-dot request-dot"/><span className="status-label">요청상태</span><b className="status-value">{currentRequestStatus}</b></span>
+     </span>
      <span className="order-count"><small>합배송</small><b>{count}건</b></span>
      <span className="summary-chevron">▼</span>
     </summary>
