@@ -14,6 +14,7 @@ export async function GET() {
         first_order_date,
         nickname,
         order_status,
+        request_status,
         order_count,
         created_at,
         domestic_shipping (
