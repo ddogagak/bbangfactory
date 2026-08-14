@@ -26,22 +26,14 @@ function shipping(order: Order) {
 
 function parseDate(value?: string | null) {
   if (!value) return null;
-
   const raw = String(value).trim();
   if (!raw) return null;
 
-  const normalized = raw
-    .replace(/\./g, "-")
-    .replace(/\//g, "-")
-    .replace(/\s+/g, " ")
-    .trim();
-
+  const normalized = raw.replace(/\./g, "-").replace(/\//g, "-").replace(/\s+/g, " ").trim();
   const ymd = normalized.match(/^(\d{4})-(\d{1,2})-(\d{1,2})/);
+
   if (ymd) {
-    const year = Number(ymd[1]);
-    const month = Number(ymd[2]);
-    const day = Number(ymd[3]);
-    const parsed = new Date(year, month - 1, day);
+    const parsed = new Date(Number(ymd[1]), Number(ymd[2]) - 1, Number(ymd[3]));
     return Number.isNaN(parsed.getTime()) ? null : parsed;
   }
 
@@ -52,21 +44,16 @@ function parseDate(value?: string | null) {
 function daysSince(value?: string | null) {
   const start = parseDate(value);
   if (!start) return null;
-
   start.setHours(0, 0, 0, 0);
   const today = new Date();
   today.setHours(0, 0, 0, 0);
-
   const diff = Math.floor((today.getTime() - start.getTime()) / 86400000);
-  if (!Number.isFinite(diff)) return null;
-
-  return Math.max(0, diff);
+  return Number.isFinite(diff) ? Math.max(0, diff) : null;
 }
 
 function dateText(value?: string | null) {
   const d = parseDate(value);
   if (!d) return value ? String(value) : "-";
-
   return new Intl.DateTimeFormat("ko-KR", {
     year: "numeric",
     month: "2-digit",
@@ -76,13 +63,13 @@ function dateText(value?: string | null) {
 
 function statusText(value?: string | null) {
   const labels: Record<string, string> = {
-    start: "배송 준비",
-    excel_exported: "배송 준비",
-    uploaded: "운송장 입력",
+    start: "배송대기",
+    excel_exported: "배송준비",
+    uploaded: "운송장입력",
     registered: "배송중",
     done: "배송완료",
   };
-  return labels[value || "start"] || "배송 준비";
+  return labels[value || "start"] || "배송대기";
 }
 
 export default function DeliveryPage() {
@@ -110,7 +97,7 @@ export default function DeliveryPage() {
 
   return (
     <main className="delivery-shell">
-      <header className="delivery-head">
+      <header className="delivery-head compact-head">
         <a href="/" className="back-button">←</a>
         <div>
           <p className="delivery-kicker">DOPAMINE BBANG FACTORY</p>
@@ -119,19 +106,14 @@ export default function DeliveryPage() {
         <span className="head-bolt">ϟ</span>
       </header>
 
-      <section className="delivery-content">
-        <div className="delivery-intro">
-          <strong>아직 완료되지 않은 주문만 보여드려요.</strong>
-          <span>닉네임으로 내 주문을 빠르게 찾아보세요.</span>
-        </div>
-
-        <label className="nickname-search">
+      <section className="delivery-content compact-content">
+        <label className="nickname-search compact-search">
           <span>닉네임</span>
-          <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="닉네임을 입력해주세요" />
+          <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="닉네임 검색" />
           {q && <button type="button" onClick={() => setQ("")}>×</button>}
         </label>
 
-        <div className="result-line">
+        <div className="result-line compact-result">
           <span>{q ? `“${q}” 검색결과` : "진행중인 배송"}</span>
           <strong>{filtered.length}</strong>
         </div>
@@ -142,35 +124,38 @@ export default function DeliveryPage() {
           <div className="delivery-empty">해당하는 진행중 주문이 없어요.</div>
         )}
 
-        <div className="delivery-list">
+        <div className="delivery-list compact-list">
           {filtered.map((order) => {
             const s = shipping(order);
             const firstDate = order.first_order_date || order.created_at;
             const days = daysSince(firstDate);
             const isKeep = order.order_status === "kept";
+            const currentStatus = statusText(s?.shipping_status);
 
             return (
-              <article className="delivery-card" key={order.order_id}>
-                <div className="delivery-card-top">
-                  <div>
-                    <p className="tiny-label">NICKNAME</p>
-                    <h2>{order.nickname || "닉네임 없음"}</h2>
+              <details className="delivery-row-card" key={order.order_id}>
+                <summary className="delivery-row-summary">
+                  <div className="summary-nickname">
+                    <span className="tiny-label">NICKNAME</span>
+                    <strong>{order.nickname || "닉네임 없음"}</strong>
                   </div>
-                  <span className={`keep-chip ${isKeep ? "on" : ""}`}>{isKeep ? "KEEP" : "배송대기"}</span>
-                </div>
+                  <div className="summary-meta">
+                    <span>첫주문 {days === null ? "-" : `${days}일`}</span>
+                    <b>·</b>
+                    <span>{currentStatus}</span>
+                  </div>
+                  <span className="summary-chevron">▼</span>
+                </summary>
 
-                <div className="days-box">
-                  <span>첫 주문으로부터</span>
-                  <strong>{days === null ? "-" : `${days}일`}</strong>
+                <div className="delivery-row-detail">
+                  <dl className="delivery-info compact-info">
+                    <div><dt>최초주문일</dt><dd>{dateText(firstDate)}</dd></div>
+                    <div><dt>배송상태</dt><dd><span className="status-dot" />{currentStatus}</dd></div>
+                    <div><dt>운송장</dt><dd className="tracking">{s?.tracking_number || "아직 등록 전"}</dd></div>
+                    <div><dt>KEEP 여부</dt><dd>{isKeep ? "KEEP 중" : "아니오"}</dd></div>
+                  </dl>
                 </div>
-
-                <dl className="delivery-info">
-                  <div><dt>최초주문일</dt><dd>{dateText(firstDate)}</dd></div>
-                  <div><dt>배송상태</dt><dd><span className="status-dot" />{statusText(s?.shipping_status)}</dd></div>
-                  <div><dt>운송장</dt><dd className="tracking">{s?.tracking_number || "아직 등록 전"}</dd></div>
-                  <div><dt>KEEP 여부</dt><dd>{isKeep ? "KEEP 중" : "아니오"}</dd></div>
-                </dl>
-              </article>
+              </details>
             );
           })}
         </div>
