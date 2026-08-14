@@ -10,9 +10,11 @@ export async function GET() {
       .from("domestic_order")
       .select(`
         order_id,
+        platform,
         first_order_date,
         nickname,
         order_status,
+        order_count,
         created_at,
         domestic_shipping (
           carrier,
@@ -21,6 +23,7 @@ export async function GET() {
           shipping_status
         )
       `)
+      .eq("platform", "wise")
       .neq("order_status", "done")
       .order("first_order_date", { ascending: true });
 
@@ -34,6 +37,7 @@ export async function GET() {
         : order.domestic_shipping
           ? [order.domestic_shipping]
           : [];
+
       return !shippingRows.some((shipping: any) => shipping?.shipping_status === "done");
     });
 
