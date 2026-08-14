@@ -4,23 +4,18 @@ import { createServiceRoleClient } from "@/lib/supabase/server";
 export const runtime = "nodejs";
 
 function normalizePostalCode(value: unknown) {
-  const raw = String(value ?? "").trim().replace(/^['"]+/, "");
+  const raw = String(value ?? "").trim().replace(/^[\'\"]+/, "");
   if (!raw) return "";
 
-  // Excel/CSV에서 12345.0 형태로 들어온 경우도 12345로 처리
   const decimalMatch = raw.match(/^(\d{1,5})\.0+$/);
   if (decimalMatch) return decimalMatch[1].padStart(5, "0");
 
-  // 일반적인 5자리 우편번호
   const fiveDigitMatch = raw.match(/(?:^|\D)(\d{5})(?:\D|$)/);
   if (fiveDigitMatch) return fiveDigitMatch[1];
 
   const digits = raw.replace(/\D/g, "");
   if (!digits) return "";
-
-  // 숫자형 저장 과정에서 맨 앞 0이 사라진 경우 보정
   if (digits.length < 5) return digits.padStart(5, "0");
-
   return digits.slice(0, 5);
 }
 
@@ -93,7 +88,10 @@ export async function POST(req: Request) {
 
     const orderId = String(body.order_id || "").trim();
     const requestType = String(body.request_type || "").trim();
-    const postalCode = normalizePostalCode(body.postal_code);
+    const rawVerification = String(body.postal_code ?? "").trim();
+    const masterKey = String(process.env.DELIVERY_MASTER_KEY || "").trim();
+    const isMaster = Boolean(masterKey) && rawVerification === masterKey;
+    const postalCode = isMaster ? "" : normalizePostalCode(rawVerification);
     const otherText = String(body.other_text || "").trim();
 
     if (!orderId) {
@@ -110,7 +108,7 @@ export async function POST(req: Request) {
       );
     }
 
-    if (!postalCode) {
+    if (!isMaster && !postalCode) {
       return NextResponse.json(
         { error: "우편번호를 입력해주세요." },
         { status: 400 }
@@ -124,7 +122,6 @@ export async function POST(req: Request) {
       );
     }
 
-    // 우편번호는 브라우저로 내려주지 않고 서버에서만 비교합니다.
     const { data: order, error: fetchError } = await supabase
       .from("domestic_order")
       .select("order_id, postal_code, memo, request_status")
@@ -141,13 +138,15 @@ export async function POST(req: Request) {
       );
     }
 
-    const savedPostalCode = normalizePostalCode(order.postal_code);
+    if (!isMaster) {
+      const savedPostalCode = normalizePostalCode(order.postal_code);
 
-    if (!savedPostalCode || postalCode !== savedPostalCode) {
-      return NextResponse.json(
-        { error: "우편번호가 일치하지 않습니다." },
-        { status: 403 }
-      );
+      if (!savedPostalCode || postalCode !== savedPostalCode) {
+        return NextResponse.json(
+          { error: "우편번호가 일치하지 않습니다." },
+          { status: 403 }
+        );
+      }
     }
 
     const nowText = new Intl.DateTimeFormat("ko-KR", {
@@ -173,10 +172,7 @@ export async function POST(req: Request) {
         );
       }
 
-      return NextResponse.json({
-        ok: true,
-        message: "킵 요청이 접수되었습니다.",
-      });
+      return NextResponse.json({ ok: true, message: "킵 요청이 접수되었습니다." });
     }
 
     if (requestType === "immediate") {
@@ -195,10 +191,7 @@ export async function POST(req: Request) {
         );
       }
 
-      return NextResponse.json({
-        ok: true,
-        message: "바배 요청이 접수되었습니다.",
-      });
+      return NextResponse.json({ ok: true, message: "바배 요청이 접수되었습니다." });
     }
 
     if (requestType === "direct_keep") {
@@ -209,10 +202,7 @@ export async function POST(req: Request) {
 
       const { error } = await supabase
         .from("domestic_order")
-        .update({
-          memo: nextMemo,
-          updated_at: new Date().toISOString(),
-        })
+        .update({ memo: nextMemo, updated_at: new Date().toISOString() })
         .eq("order_id", orderId);
 
       if (error) {
@@ -222,10 +212,7 @@ export async function POST(req: Request) {
         );
       }
 
-      return NextResponse.json({
-        ok: true,
-        message: "직배킵 요청이 접수되었습니다.",
-      });
+      return NextResponse.json({ ok: true, message: "직배킵 요청이 접수되었습니다." });
     }
 
     const nextMemo = appendMemo(
@@ -235,10 +222,7 @@ export async function POST(req: Request) {
 
     const { error } = await supabase
       .from("domestic_order")
-      .update({
-        memo: nextMemo,
-        updated_at: new Date().toISOString(),
-      })
+      .update({ memo: nextMemo, updated_at: new Date().toISOString() })
       .eq("order_id", orderId);
 
     if (error) {
@@ -248,10 +232,7 @@ export async function POST(req: Request) {
       );
     }
 
-    return NextResponse.json({
-      ok: true,
-      message: "기타 요청이 접수되었습니다.",
-    });
+    return NextResponse.json({ ok: true, message: "기타 요청이 접수되었습니다." });
   } catch (error) {
     return NextResponse.json(
       {
