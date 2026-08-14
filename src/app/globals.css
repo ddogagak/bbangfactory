@@ -180,7 +180,7 @@ a {
 .bread-row {
   display: flex;
   gap: 12px;
-  align-items: end;
+  align-items: flex-end;
   width: max-content;
   animation: breadMove 13s linear infinite;
 }
