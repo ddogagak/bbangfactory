@@ -4,7 +4,24 @@ import { createServiceRoleClient } from "@/lib/supabase/server";
 export const runtime = "nodejs";
 
 function normalizePostalCode(value: unknown) {
-  return String(value ?? "").replace(/\D/g, "").trim();
+  const raw = String(value ?? "").trim().replace(/^['"]+/, "");
+  if (!raw) return "";
+
+  // Excel/CSV에서 12345.0 형태로 들어온 경우도 12345로 처리
+  const decimalMatch = raw.match(/^(\d{1,5})\.0+$/);
+  if (decimalMatch) return decimalMatch[1].padStart(5, "0");
+
+  // 일반적인 5자리 우편번호
+  const fiveDigitMatch = raw.match(/(?:^|\D)(\d{5})(?:\D|$)/);
+  if (fiveDigitMatch) return fiveDigitMatch[1];
+
+  const digits = raw.replace(/\D/g, "");
+  if (!digits) return "";
+
+  // 숫자형 저장 과정에서 맨 앞 0이 사라진 경우 보정
+  if (digits.length < 5) return digits.padStart(5, "0");
+
+  return digits.slice(0, 5);
 }
 
 function appendMemo(currentMemo: string | null, nextLine: string) {
