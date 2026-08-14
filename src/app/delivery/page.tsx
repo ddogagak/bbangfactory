@@ -1,0 +1,150 @@
+"use client";
+
+import { useEffect, useMemo, useState } from "react";
+
+type Shipping = {
+  carrier: string | null;
+  shipping_type: string | null;
+  tracking_number: string | null;
+  shipping_status: string | null;
+};
+
+type Order = {
+  order_id: string;
+  first_order_date: string | null;
+  nickname: string | null;
+  order_status: string | null;
+  created_at: string | null;
+  domestic_shipping: Shipping | Shipping[] | null;
+};
+
+function shipping(order: Order) {
+  return Array.isArray(order.domestic_shipping)
+    ? order.domestic_shipping[0] || null
+    : order.domestic_shipping;
+}
+
+function daysSince(value?: string | null) {
+  if (!value) return null;
+  const start = new Date(`${value.slice(0, 10)}T00:00:00`);
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  return Math.max(0, Math.floor((today.getTime() - start.getTime()) / 86400000));
+}
+
+function dateText(value?: string | null) {
+  if (!value) return "-";
+  const d = new Date(value);
+  if (Number.isNaN(d.getTime())) return value.slice(0, 10);
+  return new Intl.DateTimeFormat("ko-KR", { year: "numeric", month: "2-digit", day: "2-digit" }).format(d);
+}
+
+function statusText(value?: string | null) {
+  const labels: Record<string, string> = {
+    start: "배송 준비",
+    excel_exported: "배송 준비",
+    uploaded: "운송장 입력",
+    registered: "배송중",
+    done: "배송완료",
+  };
+  return labels[value || "start"] || "배송 준비";
+}
+
+export default function DeliveryPage() {
+  const [orders, setOrders] = useState<Order[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [message, setMessage] = useState("");
+  const [q, setQ] = useState("");
+
+  useEffect(() => {
+    fetch("/api/delivery", { cache: "no-store" })
+      .then(async (res) => {
+        const json = await res.json();
+        if (!res.ok) throw new Error(json.detail || json.error || "조회 실패");
+        setOrders(json.orders || []);
+      })
+      .catch((error) => setMessage(error instanceof Error ? error.message : "조회 실패"))
+      .finally(() => setLoading(false));
+  }, []);
+
+  const filtered = useMemo(() => {
+    const keyword = q.trim().toLowerCase();
+    if (!keyword) return orders;
+    return orders.filter((order) => String(order.nickname || "").toLowerCase().includes(keyword));
+  }, [orders, q]);
+
+  return (
+    <main className="delivery-shell">
+      <header className="delivery-head">
+        <a href="/" className="back-button">←</a>
+        <div>
+          <p className="delivery-kicker">DOPAMINE BBANG FACTORY</p>
+          <h1>배송 & KEEP 조회</h1>
+        </div>
+        <span className="head-bolt">ϟ</span>
+      </header>
+
+      <section className="delivery-content">
+        <div className="delivery-intro">
+          <strong>아직 완료되지 않은 주문만 보여드려요.</strong>
+          <span>닉네임으로 내 주문을 빠르게 찾아보세요.</span>
+        </div>
+
+        <label className="nickname-search">
+          <span>닉네임</span>
+          <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="닉네임을 입력해주세요" />
+          {q && <button type="button" onClick={() => setQ("")}>×</button>}
+        </label>
+
+        <div className="result-line">
+          <span>{q ? `“${q}” 검색결과` : "진행중인 배송"}</span>
+          <strong>{filtered.length}</strong>
+        </div>
+
+        {loading && <div className="delivery-empty">빵을 찾는 중...</div>}
+        {!loading && message && <div className="delivery-empty error">{message}</div>}
+        {!loading && !message && filtered.length === 0 && (
+          <div className="delivery-empty">해당하는 진행중 주문이 없어요.</div>
+        )}
+
+        <div className="delivery-list">
+          {filtered.map((order) => {
+            const s = shipping(order);
+            const days = daysSince(order.first_order_date || order.created_at);
+            const isKeep = order.order_status === "kept";
+            return (
+              <article className="delivery-card" key={order.order_id}>
+                <div className="delivery-card-top">
+                  <div>
+                    <p className="tiny-label">NICKNAME</p>
+                    <h2>{order.nickname || "닉네임 없음"}</h2>
+                  </div>
+                  <span className={`keep-chip ${isKeep ? "on" : ""}`}>{isKeep ? "KEEP" : "배송대기"}</span>
+                </div>
+
+                <div className="days-box">
+                  <span>첫 주문으로부터</span>
+                  <strong>{days === null ? "-" : `${days}일`}</strong>
+                </div>
+
+                <dl className="delivery-info">
+                  <div><dt>최초주문일</dt><dd>{dateText(order.first_order_date || order.created_at)}</dd></div>
+                  <div><dt>배송상태</dt><dd><span className="status-dot" />{statusText(s?.shipping_status)}</dd></div>
+                  <div><dt>운송장</dt><dd className="tracking">{s?.tracking_number || "아직 등록 전"}</dd></div>
+                  <div><dt>KEEP 여부</dt><dd>{isKeep ? "KEEP 중" : "아니오"}</dd></div>
+                </dl>
+              </article>
+            );
+          })}
+        </div>
+      </section>
+
+      <nav className="bottom-nav">
+        <a href="/">HOME</a>
+        <a href="/random">랜깡</a>
+        <a href="/catalog">도감</a>
+        <a className="active" href="/delivery">배송</a>
+      </nav>
+    </main>
+  );
+}
