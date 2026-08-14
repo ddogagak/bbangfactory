@@ -1,4 +1,18 @@
-export default function RandomPage() {
+import RandomListClient from "./RandomListClient";
+import { createServiceRoleClient } from "@/lib/supabase/server";
+
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+
+export default async function RandomPage() {
+  const supabase = createServiceRoleClient();
+
+  const { data, error } = await supabase
+    .from("inventory_items")
+    .select("id,item_name,item_type,series_name,image_url,created_at")
+    .eq("status", "판매중")
+    .order("created_at", { ascending: false });
+
   return (
     <main className="delivery-shell">
       <header className="delivery-head compact-head">
@@ -11,9 +25,16 @@ export default function RandomPage() {
       </header>
 
       <section className="delivery-content">
-        <div className="delivery-empty" style={{ marginTop: "30px", padding: "60px 15px" }}>
-          준비중
-        </div>
+        {error ? (
+          <div className="delivery-empty" style={{ marginTop: 30, padding: "50px 15px" }}>
+            랜깡 목록을 불러오지 못했어요.
+            <div style={{ marginTop: 8, fontSize: 11, opacity: 0.55 }}>
+              {error.message}
+            </div>
+          </div>
+        ) : (
+          <RandomListClient initialItems={data ?? []} />
+        )}
       </section>
 
       <nav className="bottom-nav">
