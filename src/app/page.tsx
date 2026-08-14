@@ -1,83 +1,551 @@
-const Breads = ({ count = 8 }: { count?: number }) => (
-  <div className="bread-row" aria-hidden="true">
-    {Array.from({ length: count }).map((_, i) => (
-      <div className={`bread bread-${(i % 4) + 1}`} key={i}>
-        <span className="bread-face">•ᴗ•</span>
-      </div>
-    ))}
-  </div>
-);
+"use client";
 
-export default function Home() {
+import { useEffect, useMemo, useState } from "react";
+
+type Shipping = {
+  carrier: string | null;
+  shipping_type: string | null;
+  tracking_number: string | null;
+  shipping_status: string | null;
+};
+
+type Order = {
+  order_id: string;
+  platform: string | null;
+  first_order_date: string | null;
+  nickname: string | null;
+  order_status: string | null;
+  request_status: string | null;
+  order_count: number | null;
+  created_at: string | null;
+  domestic_shipping: Shipping | Shipping[] | null;
+};
+
+type RequestType = "direct_keep" | "keep" | "immediate" | "other";
+
+type VerifyTarget = {
+  orderId: string;
+  requestType: RequestType;
+  otherText: string;
+} | null;
+
+function shipping(order: Order) {
+  return Array.isArray(order.domestic_shipping)
+    ? order.domestic_shipping[0] || null
+    : order.domestic_shipping;
+}
+
+function parseDate(value?: string | null) {
+  if (!value) return null;
+  const raw = String(value).trim();
+  if (!raw) return null;
+
+  const normalized = raw
+    .replace(/\./g, "-")
+    .replace(/\//g, "-")
+    .replace(/\s+/g, " ")
+    .trim();
+
+  const ymd = normalized.match(/^(\d{4})-(\d{1,2})-(\d{1,2})/);
+
+  if (ymd) {
+    const d = new Date(Number(ymd[1]), Number(ymd[2]) - 1, Number(ymd[3]));
+    return Number.isNaN(d.getTime()) ? null : d;
+  }
+
+  const d = new Date(raw);
+  return Number.isNaN(d.getTime()) ? null : d;
+}
+
+function daysSince(value?: string | null) {
+  const start = parseDate(value);
+  if (!start) return null;
+
+  start.setHours(0, 0, 0, 0);
+
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  const diff = Math.floor(
+    (today.getTime() - start.getTime()) / 86400000
+  );
+
+  return Number.isFinite(diff) ? Math.max(0, diff) : null;
+}
+
+function dateText(value?: string | null) {
+  const d = parseDate(value);
+  if (!d) return value ? String(value) : "-";
+
+  return new Intl.DateTimeFormat("ko-KR", {
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(d);
+}
+
+function statusText(value?: string | null) {
+  const labels: Record<string, string> = {
+    start: "배송대기",
+    excel_exported: "배송준비",
+    uploaded: "운송장입력",
+    registered: "배송중",
+    done: "배송완료",
+  };
+
+  return labels[value || "start"] || "배송대기";
+}
+
+function orderStatusText(value?: string | null) {
+  const labels: Record<string, string> = {
+    accepted: "입력됨",
+    checked: "재고확인",
+    kept: "직배킵",
+    packaged: "포장완료",
+    done: "완료",
+  };
+
+  return labels[value || "accepted"] || value || "입력됨";
+}
+
+function requestStatusText(value?: string | null) {
+  const labels: Record<string, string> = {
+    none: "요청없음",
+    keep: "킵",
+    immediate: "바배",
+  };
+
+  return labels[value || "none"] || value || "요청없음";
+}
+
+export default function DeliveryPage() {
+  const [orders, setOrders] = useState<Order[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [message, setMessage] = useState("");
+  const [q, setQ] = useState("");
+
+  const [selectedRequests, setSelectedRequests] = useState<
+    Record<string, RequestType | undefined>
+  >({});
+
+  const [otherTexts, setOtherTexts] = useState<Record<string, string>>({});
+
+  const [verifyTarget, setVerifyTarget] = useState<VerifyTarget>(null);
+  const [postalCode, setPostalCode] = useState("");
+  const [requestMessage, setRequestMessage] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+
+  async function load() {
+    const res = await fetch("/api/delivery", { cache: "no-store" });
+    const json = await res.json();
+
+    if (!res.ok) {
+      throw new Error(json.detail || json.error || "조회 실패");
+    }
+
+    setOrders(json.orders || []);
+  }
+
+  useEffect(() => {
+    load()
+      .catch((error) =>
+        setMessage(error instanceof Error ? error.message : "조회 실패")
+      )
+      .finally(() => setLoading(false));
+  }, []);
+
+  const filtered = useMemo(() => {
+    const keyword = q.trim().toLowerCase();
+    if (!keyword) return orders;
+
+    return orders.filter((order) =>
+      String(order.nickname || "").toLowerCase().includes(keyword)
+    );
+  }, [orders, q]);
+
+  function chooseRequest(orderId: string, requestType: RequestType) {
+    setSelectedRequests((prev) => ({
+      ...prev,
+      [orderId]: requestType,
+    }));
+  }
+
+  function openVerify(orderId: string) {
+    const requestType = selectedRequests[orderId];
+    if (!requestType) return;
+
+    const otherText = String(otherTexts[orderId] || "").trim();
+
+    if (requestType === "other" && !otherText) {
+      alert("기타 요청 내용을 입력해주세요.");
+      return;
+    }
+
+    setVerifyTarget({
+      orderId,
+      requestType,
+      otherText,
+    });
+
+    setPostalCode("");
+    setRequestMessage("");
+  }
+
+  function closeVerify() {
+    if (submitting) return;
+    setVerifyTarget(null);
+    setPostalCode("");
+    setRequestMessage("");
+  }
+
+  async function submitRequest() {
+    if (!verifyTarget) return;
+
+    const cleanPostal = postalCode.replace(/\D/g, "");
+
+    if (!cleanPostal) {
+      setRequestMessage("우편번호를 입력해주세요.");
+      return;
+    }
+
+    setSubmitting(true);
+    setRequestMessage("");
+
+    try {
+      const res = await fetch("/api/delivery", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          order_id: verifyTarget.orderId,
+          request_type: verifyTarget.requestType,
+          postal_code: cleanPostal,
+          other_text: verifyTarget.otherText,
+        }),
+      });
+
+      const json = await res.json();
+
+      if (!res.ok) {
+        setRequestMessage(json.detail || json.error || "요청 처리 실패");
+        return;
+      }
+
+      alert(json.message || "요청이 접수되었습니다.");
+
+      setSelectedRequests((prev) => {
+        const next = { ...prev };
+        delete next[verifyTarget.orderId];
+        return next;
+      });
+
+      setOtherTexts((prev) => {
+        const next = { ...prev };
+        delete next[verifyTarget.orderId];
+        return next;
+      });
+
+      closeVerify();
+      await load();
+    } catch (error) {
+      setRequestMessage(
+        error instanceof Error ? error.message : "요청 처리 실패"
+      );
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
   return (
-    <main className="site-shell">
-      <section className="hero">
-        <div className="decor pipe pipe-left" />
-        <div className="decor pipe pipe-right" />
-        <div className="spark spark-1">✦</div>
-        <div className="spark spark-2">✦</div>
+    <main className="delivery-shell">
+      <header className="delivery-head compact-head">
+        <a href="/" className="back-button">←</a>
 
-        <div className="mini-brand">DOPAMINE BBANG FACTORY</div>
-
-        <div className="factory-sign">
-          <span className="main-title">도파민빵 팩토리</span>
-          <span className="sign-bolt">ϟ</span>
+        <div>
+          <p className="delivery-kicker">DOPAMINE BBANG FACTORY</p>
+          <h1>배송 & KEEP 조회</h1>
         </div>
 
-        <p className="hero-copy">오늘도 도파민 생산중</p>
+        <span className="head-bolt">ϟ</span>
+      </header>
 
-        <div className="conveyor">
-          <Breads count={9} />
-          <div className="belt">
-            {Array.from({ length: 12 }).map((_, i) => <i key={i} />)}
-          </div>
-        </div>
-      </section>
+      <section className="delivery-content compact-content">
+        <label className="nickname-search compact-search">
+          <span>닉네임</span>
 
-      <section className="dashboard">
-        <a className="panel panel-wide cream-panel" href="/delivery">
-          <div className="panel-icon machine-icon">
-            <span /><span /><span />
-          </div>
-          <div>
-            <p className="eyebrow">MY ORDER</p>
-            <h2>배송 & KEEP 조회</h2>
-            <p>내 물건 어디까지 왔지?</p>
-          </div>
-          <span className="arrow">→</span>
-        </a>
+          <input
+            value={q}
+            onChange={(e) => setQ(e.target.value)}
+            placeholder="닉네임 검색"
+          />
 
-        <div className="two-col">
-          <a className="panel yellow-panel" href="/random">
-            <div className="window">
-              <div className="tiny-breads"><span /><span /><span /></div>
-            </div>
-            <p className="eyebrow">OPEN NOW</p>
-            <h2>랜깡 LIST</h2>
-            <p>오늘 뭐 깔까?</p>
-            <span className="corner-bolt">ϟ</span>
-          </a>
+          {q && (
+            <button type="button" onClick={() => setQ("")}>
+              ×
+            </button>
+          )}
+        </label>
 
-          <a className="panel blue-panel" href="/catalog">
-            <div className="card-stack" aria-hidden="true"><span /><span /><span /></div>
-            <p className="eyebrow">CARD BOOK</p>
-            <h2>도감</h2>
-            <p>시리즈별 카드 한눈에</p>
-            <span className="arrow light">→</span>
-          </a>
+        <div className="result-line compact-result">
+          <span>{q ? `“${q}” 검색결과` : "진행중인 배송"}</span>
+          <strong>{filtered.length}</strong>
         </div>
 
-        <div className="mini-factory">
-          <Breads count={7} />
+        {loading && <div className="delivery-empty">빵을 찾는 중...</div>}
+
+        {!loading && message && (
+          <div className="delivery-empty error">{message}</div>
+        )}
+
+        {!loading && !message && filtered.length === 0 && (
+          <div className="delivery-empty">
+            해당하는 진행중 주문이 없어요.
+          </div>
+        )}
+
+        <div className="delivery-list compact-list">
+          {filtered.map((order) => {
+            const s = shipping(order);
+            const firstDate = order.first_order_date || order.created_at;
+            const days = daysSince(firstDate);
+            const currentStatus = statusText(s?.shipping_status);
+            const currentOrderStatus = orderStatusText(order.order_status);
+            const currentRequestStatus = requestStatusText(order.request_status);
+            const count = Math.max(1, Number(order.order_count) || 1);
+
+            const selectedRequest = selectedRequests[order.order_id];
+            const otherText = otherTexts[order.order_id] || "";
+
+            return (
+              <details className="delivery-row-card" key={order.order_id}>
+                <summary className="delivery-row-summary">
+                  <span className="day-badge">
+                    + {days === null ? "-" : days}일
+                  </span>
+
+                  <div className="summary-nickname">
+                    <span className="tiny-label">NICKNAME</span>
+                    <strong>{order.nickname || "닉네임 없음"}</strong>
+                  </div>
+
+                  <span className="summary-status-stack">
+                    <span>
+                      <i className="status-dot" />
+                      <span className="status-label">주문상태</span>
+                      <b className="status-value">{currentOrderStatus}</b>
+                    </span>
+
+                    <span>
+                      <i className="status-dot request-dot" />
+                      <span className="status-label">요청상태</span>
+                      <b className="status-value">{currentRequestStatus}</b>
+                    </span>
+                  </span>
+
+                  <span className="order-count">
+                    <small>합배송</small>
+                    <b>{count}건</b>
+                  </span>
+
+                  <span className="summary-chevron">▼</span>
+                </summary>
+
+                <div className="delivery-row-detail request-detail-grid">
+                  <div className="request-detail-left">
+                    <dl className="delivery-info compact-info">
+                      <div>
+                        <dt>최초주문일</dt>
+                        <dd>{dateText(firstDate)}</dd>
+                      </div>
+
+                      <div>
+                        <dt>주문상태</dt>
+                        <dd>
+                          <span className="status-dot" />
+                          {currentOrderStatus}
+                        </dd>
+                      </div>
+
+                      <div>
+                        <dt>요청상태</dt>
+                        <dd>
+                          <span className="status-dot request-dot" />
+                          {currentRequestStatus}
+                        </dd>
+                      </div>
+
+                      <div>
+                        <dt>배송상태</dt>
+                        <dd>
+                          <span className="status-dot" />
+                          {currentStatus}
+                        </dd>
+                      </div>
+
+                      <div>
+                        <dt>운송장</dt>
+                        <dd className="tracking">
+                          {s?.tracking_number || "아직 등록 전"}
+                        </dd>
+                      </div>
+                    </dl>
+                  </div>
+
+                  <div className="request-panel">
+                    <div className="request-panel-title">요청 사항</div>
+
+                    <div className="request-buttons">
+                      <button
+                        type="button"
+                        className={
+                          selectedRequest === "direct_keep" ? "selected" : ""
+                        }
+                        onClick={() =>
+                          chooseRequest(order.order_id, "direct_keep")
+                        }
+                      >
+                        직배킵 요청
+                      </button>
+
+                      <button
+                        type="button"
+                        className={
+                          selectedRequest === "keep" ? "selected" : ""
+                        }
+                        onClick={() =>
+                          chooseRequest(order.order_id, "keep")
+                        }
+                      >
+                        킵 요청 (12일킵)
+                      </button>
+
+                      <button
+                        type="button"
+                        className={
+                          selectedRequest === "immediate" ? "selected" : ""
+                        }
+                        onClick={() =>
+                          chooseRequest(order.order_id, "immediate")
+                        }
+                      >
+                        바배 요청
+                      </button>
+
+                      <button
+                        type="button"
+                        className={
+                          selectedRequest === "other" ? "selected" : ""
+                        }
+                        onClick={() =>
+                          chooseRequest(order.order_id, "other")
+                        }
+                      >
+                        기타 요청
+                      </button>
+                    </div>
+
+                    {selectedRequest === "other" && (
+                      <textarea
+                        className="other-request-input"
+                        value={otherText}
+                        onChange={(e) =>
+                          setOtherTexts((prev) => ({
+                            ...prev,
+                            [order.order_id]: e.target.value,
+                          }))
+                        }
+                        placeholder="요청 내용을 입력해주세요"
+                        maxLength={300}
+                      />
+                    )}
+
+                    {selectedRequest && (
+                      <div className="request-confirm-row">
+                        <button
+                          type="button"
+                          className="request-confirm-button"
+                          onClick={() => openVerify(order.order_id)}
+                        >
+                          확인
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </details>
+            );
+          })}
         </div>
       </section>
 
       <nav className="bottom-nav">
-        <a className="active" href="/">HOME</a>
+        <a href="/">HOME</a>
         <a href="/random">랜깡</a>
         <a href="/catalog">도감</a>
-        <a href="/delivery">배송</a>
+        <a className="active" href="/delivery">배송</a>
       </nav>
+
+      {verifyTarget && (
+        <div className="postal-modal-backdrop" onClick={closeVerify}>
+          <div
+            className="postal-modal"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <button
+              type="button"
+              className="postal-modal-close"
+              onClick={closeVerify}
+              disabled={submitting}
+            >
+              ×
+            </button>
+
+            <h3>본인확인을 위해<br />우편번호를 입력해주세요</h3>
+
+            <input
+              autoFocus
+              inputMode="numeric"
+              value={postalCode}
+              onChange={(e) =>
+                setPostalCode(
+                  e.target.value.replace(/\D/g, "").slice(0, 6)
+                )
+              }
+              placeholder="우편번호"
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  void submitRequest();
+                }
+              }}
+            />
+
+            {requestMessage && (
+              <p className="postal-error">{requestMessage}</p>
+            )}
+
+            <div className="postal-modal-actions">
+              <button
+                type="button"
+                className="postal-cancel"
+                onClick={closeVerify}
+                disabled={submitting}
+              >
+                취소
+              </button>
+
+              <button
+                type="button"
+                className="postal-submit"
+                onClick={() => void submitRequest()}
+                disabled={submitting}
+              >
+                {submitting ? "확인중..." : "확인"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </main>
   );
 }
