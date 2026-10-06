@@ -1,17 +1,18 @@
 import RandomListClient from "./RandomListClient";
-import { createServiceRoleClient } from "@/lib/supabase/server";
+import { getPublicSaleItems } from "@/lib/public-sale-inventory";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
 export default async function RandomPage() {
-  const supabase = createServiceRoleClient();
+  let data = [];
+  let error: Error | null = null;
 
-  const { data, error } = await supabase
-    .from("inventory_items")
-    .select("id,item_name,item_type,series_name,image_url,created_at")
-    .eq("status", "판매중")
-    .order("created_at", { ascending: false });
+  try {
+    data = await getPublicSaleItems("display");
+  } catch (caught) {
+    error = caught instanceof Error ? caught : new Error("목록 조회 실패");
+  }
 
   return (
     <main className="delivery-shell">
