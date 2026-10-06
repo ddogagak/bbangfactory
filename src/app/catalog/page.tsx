@@ -10,7 +10,32 @@ export default async function CatalogPage() {
   let error: Error | null = null;
 
   try {
-    data = await getPublicSaleItems("completed");
+    const [completedItems, legacyItemsResult] = await Promise.all([
+      getPublicSaleItems("completed"),
+      (async () => {
+        const { createServiceRoleClient } = await import("@/lib/supabase/server");
+        const supabase = createServiceRoleClient();
+        return supabase
+          .from("inventory_items")
+          .select("id,item_name,item_type,series_name,image_url,created_at")
+          .in("status", ["판매중", "판매완료"])
+          .order("created_at", { ascending: false });
+      })(),
+    ]);
+
+    if (legacyItemsResult.error) throw legacyItemsResult.error;
+
+    const merged = [...completedItems, ...(legacyItemsResult.data ?? [])] as PublicSaleItem[];
+    const seen = new Set<string>();
+    data = merged.filter((item) => {
+      const key = [
+        String(item.item_name || "").trim().toLowerCase(),
+        String(item.image_url || "").trim().toLowerCase(),
+      ].join("|");
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
   } catch (caught) {
     error = caught instanceof Error ? caught : new Error("목록 조회 실패");
   }
