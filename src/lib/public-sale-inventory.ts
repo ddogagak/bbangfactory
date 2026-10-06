@@ -16,37 +16,26 @@ export type PublicSaleItem = {
 export async function getPublicSaleItems(mode: "display" | "completed"): Promise<PublicSaleItem[]> {
   const supabase = createServiceRoleClient();
 
-  let ledgerQuery = supabase
-    .from("purchase_sale_inventory")
-    .select("purchase_item_id,stock_status,sale_memo,sold_out_at");
+  const [{ data: orders, error: orderError }, { data: ledgers, error: ledgerError }] = await Promise.all([
+    supabase
+      .from("purchase_orders")
+      .select("ordered_at,purchase_items(id,product_name,display_name_ko,image_url,sourcing_inventory_id,created_at)")
+      .eq("order_status", "입고완료"),
+    supabase
+      .from("purchase_sale_inventory")
+      .select("purchase_item_id,stock_status,sale_memo,sold_out_at"),
+  ]);
 
-  ledgerQuery = mode === "completed"
-    ? ledgerQuery.eq("stock_status", "soldout")
-    : ledgerQuery.eq("stock_status", "active");
-
-  const { data: ledgers, error: ledgerError } = await ledgerQuery;
+  if (orderError) throw orderError;
   if (ledgerError) throw ledgerError;
 
-  const visibleLedgers = (ledgers ?? []).filter((row: any) =>
-    mode === "completed" || !String(row.sale_memo || "").startsWith(HIDDEN_MARKER)
+  const ledgerByItemId = new Map((ledgers ?? []).map((row: any) => [String(row.purchase_item_id), row]));
+  const purchaseItems = (orders ?? []).flatMap((order: any) =>
+    (order.purchase_items ?? []).map((item: any) => ({ ...item, order_date: order.ordered_at }))
   );
-  const purchaseItemIds = visibleLedgers
-    .map((row: any) => String(row.purchase_item_id || "").trim())
-    .filter(Boolean);
-
-  if (!purchaseItemIds.length) return [];
-
-  const { data: purchaseItems, error: itemError } = await supabase
-    .from("purchase_items")
-    .select("id,product_name,display_name_ko,image_url,sourcing_inventory_id,created_at")
-    .in("id", purchaseItemIds);
-
-  if (itemError) throw itemError;
 
   const sourcingIds = Array.from(new Set(
-    (purchaseItems ?? [])
-      .map((item: any) => String(item.sourcing_inventory_id || "").trim())
-      .filter(Boolean)
+    purchaseItems.map((item: any) => String(item.sourcing_inventory_id || "").trim()).filter(Boolean)
   ));
 
   let sourcingRows: any[] = [];
@@ -60,21 +49,34 @@ export async function getPublicSaleItems(mode: "display" | "completed"): Promise
   }
 
   const sourcingById = new Map(sourcingRows.map((row: any) => [String(row.id), row]));
-  const ledgerByItemId = new Map(visibleLedgers.map((row: any) => [String(row.purchase_item_id), row]));
 
-  return (purchaseItems ?? []).map((item: any) => {
+  return purchaseItems.flatMap((item: any) => {
     const sourcing: any = sourcingById.get(String(item.sourcing_inventory_id || "")) || null;
     const ledger: any = ledgerByItemId.get(String(item.id)) || null;
+    const imageUrl = item.image_url || sourcing?.image_url || null;
 
-    return {
+    const viewStatus =
+      ledger?.stock_status === "soldout"
+        ? "completed"
+        : String(ledger?.sale_memo || "").startsWith(HIDDEN_MARKER)
+          ? "hidden"
+          : ledger
+            ? "display"
+            : imageUrl
+              ? "display"
+              : "hidden";
+
+    if (viewStatus !== mode) return [];
+
+    return [{
       id: String(item.id),
       item_name: item.display_name_ko || sourcing?.item_name || item.product_name || null,
       item_type: sourcing?.item_type || null,
       series_name: sourcing?.series_name || null,
-      image_url: item.image_url || sourcing?.image_url || null,
+      image_url: imageUrl,
       created_at: mode === "completed"
-        ? ledger?.sold_out_at || item.created_at || null
-        : item.created_at || null,
-    };
+        ? ledger?.sold_out_at || item.created_at || item.order_date || null
+        : item.created_at || item.order_date || null,
+    }];
   });
 }
