@@ -2,6 +2,7 @@ import CollectionListClient from "./CollectionListClient";
 import { getPublicSaleItems, type PublicSaleItem } from "@/lib/public-sale-inventory";
 
 export const dynamic = "force-dynamic";
+// Public sale inventory is loaded fresh from ddoga on every request.
 export const revalidate = 0;
 
 export default async function CatalogPage() {
