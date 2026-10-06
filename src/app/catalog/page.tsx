@@ -1,17 +1,18 @@
 import CollectionListClient from "./CollectionListClient";
-import { createServiceRoleClient } from "@/lib/supabase/server";
+import { getPublicSaleItems } from "@/lib/public-sale-inventory";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
 export default async function CatalogPage() {
-  const supabase = createServiceRoleClient();
+  let data = [];
+  let error: Error | null = null;
 
-  const { data, error } = await supabase
-    .from("inventory_items")
-    .select("id,item_name,item_type,series_name,image_url,created_at")
-    .eq("status", "판매완료")
-    .order("created_at", { ascending: false });
+  try {
+    data = await getPublicSaleItems("completed");
+  } catch (caught) {
+    error = caught instanceof Error ? caught : new Error("목록 조회 실패");
+  }
 
   return (
     <main className="delivery-shell">
