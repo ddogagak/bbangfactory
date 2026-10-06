@@ -1,11 +1,11 @@
 import CollectionListClient from "./CollectionListClient";
-import { getPublicSaleItems } from "@/lib/public-sale-inventory";
+import { getPublicSaleItems, type PublicSaleItem } from "@/lib/public-sale-inventory";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
 export default async function CatalogPage() {
-  let data = [];
+  let data: PublicSaleItem[] = [];
   let error: Error | null = null;
 
   try {
