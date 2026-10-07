@@ -19,7 +19,7 @@ export async function getPublicSaleItems(mode: "display" | "completed"): Promise
   const [{ data: orders, error: orderError }, { data: ledgers, error: ledgerError }] = await Promise.all([
     supabase
       .from("purchase_orders")
-      .select("ordered_at,purchase_items(id,product_name,display_name_ko,image_url,sourcing_inventory_id,created_at)")
+      .select("ordered_at,purchase_items(id,product_name,display_name_ko,image_url,sourcing_inventory_id,series_name,created_at)")
       .eq("order_status", "입고완료"),
     supabase
       .from("purchase_sale_inventory")
@@ -72,7 +72,7 @@ export async function getPublicSaleItems(mode: "display" | "completed"): Promise
       id: String(item.id),
       item_name: item.display_name_ko || sourcing?.item_name || item.product_name || null,
       item_type: sourcing?.item_type || null,
-      series_name: sourcing?.series_name || null,
+      series_name: item.series_name || sourcing?.series_name || null,
       image_url: imageUrl,
       created_at: mode === "completed"
         ? ledger?.sold_out_at || item.created_at || item.order_date || null
