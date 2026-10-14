@@ -17,7 +17,7 @@ export default async function CatalogPage() {
         const supabase = createServiceRoleClient();
         return supabase
           .from("inventory_items")
-          .select("id,item_name,item_type,series_name,image_url,lineup_image_url,created_at")
+          .select("id,item_name,item_type,series_name,image_url,created_at")
           .in("status", ["판매중", "판매완료"])
           .order("created_at", { ascending: false });
       })(),
