@@ -15,8 +15,10 @@ type SortValue = "newest" | "title" | "series";
 
 export default function RandomListClient({
   initialItems,
+  seriesOptions,
 }: {
   initialItems: RandomItem[];
+  seriesOptions: string[];
 }) {
   const [series, setSeries] = useState("전체");
   const [sort, setSort] = useState<SortValue>("newest");
@@ -24,14 +26,14 @@ export default function RandomListClient({
   const seriesList = useMemo(() => {
     const values = Array.from(
       new Set(
-        initialItems
-          .map((item) => item.series_name?.trim())
-          .filter((value): value is string => Boolean(value))
+        [...seriesOptions, ...initialItems.map((item) => item.series_name ?? "")]
+          .map((value) => value.trim())
+          .filter(Boolean)
       )
     ).sort((a, b) => a.localeCompare(b, "ko"));
 
     return ["전체", ...values];
-  }, [initialItems]);
+  }, [initialItems, seriesOptions]);
 
   const items = useMemo(() => {
     const filtered = initialItems.filter(
