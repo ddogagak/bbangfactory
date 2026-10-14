@@ -30,7 +30,7 @@ export default async function RandomPage() {
         <a href="/" className="back-button">←</a>
         <div>
           <p className="delivery-kicker">DOPAMINE BBANG FACTORY</p>
-          <h1>랜깡LIST</h1>
+          <h1>랜덤빵 LIST</h1>
         </div>
         <span className="head-bolt">ϟ</span>
       </header>
@@ -38,7 +38,7 @@ export default async function RandomPage() {
       <section className="delivery-content">
         {error ? (
           <div className="delivery-empty" style={{ marginTop: 30, padding: "50px 15px" }}>
-            랜깡 목록을 불러오지 못했어요.
+            랜덤빵 목록을 불러오지 못했어요.
             <div style={{ marginTop: 8, fontSize: 11, opacity: 0.55 }}>
               {error.message}
             </div>
@@ -51,8 +51,8 @@ export default async function RandomPage() {
       <nav className="bottom-nav">
         <a href="/">HOME</a>
         <a href="/delivery">배송</a>
-        <a className="active" href="/random">랜깡LIST</a>
-        <a href="/catalog">COLLECTION</a>
+        <a className="active" href="/random">랜덤빵 LIST</a>
+        <a href="/catalog">SOLDOUT 빵</a>
       </nav>
     </main>
   );
