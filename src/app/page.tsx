@@ -37,18 +37,18 @@ export default function Home() {
         </a>
         <div className="two-col">
           <a className="panel yellow-panel" href="/random">
-            <div className="window"><div className="tiny-breads"><span /><span /><span /></div></div>
-            <p className="eyebrow">OPEN NOW</p><h2>랜깡LIST</h2><p>재고리스트</p><span className="corner-bolt">ϟ</span>
+            <div className="window" aria-hidden="true"><div className="tiny-breads"><span /><span /><span /></div></div>
+            <p className="eyebrow">OPEN NOW</p><h2>랜덤빵 LIST</h2><p>지금 만날 수 있는 랜덤빵</p><span className="corner-bolt">ϟ</span>
           </a>
           <a className="panel blue-panel" href="/catalog">
-            <div className="card-stack" aria-hidden="true"><span /><span /><span /></div>
-            <p className="eyebrow">COLLECTION</p><h2>COLLECT BOOK</h2><p>랜깡 정보 조회하기</p><span className="arrow light">→</span>
+            <div className="card-stack" aria-hidden="true"><span>✓</span><span>✓</span><span>✓</span></div>
+            <p className="eyebrow">SOLD OUT</p><h2>SOLDOUT 빵</h2><p>판매 완료된 빵 모아보기</p><span className="arrow light">→</span>
           </a>
         </div>
         <div className="mini-factory"><Breads count={7} /></div>
       </section>
       <nav className="bottom-nav">
-        <a className="active" href="/">HOME</a><a href="/delivery">배송</a><a href="/random">랜깡LIST</a><a href="/catalog">COLLECTION</a>
+        <a className="active" href="/">HOME</a><a href="/delivery">배송</a><a href="/random">랜덤빵 LIST</a><a href="/catalog">SOLDOUT 빵</a>
       </nav>
     </main>
   );
