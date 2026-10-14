@@ -134,7 +134,7 @@ export default function RandomListClient({
                 </div>
 
                 <div style={titleStyle}>{item.item_name || "제목 없음"}</div>
-                {item.lineup_image_url && <button type="button" onClick={() => setLineupImage(item.lineup_image_url)} style={lineupButtonStyle}>라인업 보기 ↗</button>}
+                {item.lineup_image_url && <button type="button" onClick={() => setLineupImage(item.lineup_image_url ?? null)} style={lineupButtonStyle}>라인업 보기 ↗</button>}
               </div>
             </article>
           ))}
