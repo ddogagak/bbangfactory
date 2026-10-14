@@ -8,6 +8,7 @@ type RandomItem = {
   item_type: string | null;
   series_name: string | null;
   image_url: string | null;
+  lineup_image_url: string | null;
   created_at: string | null;
 };
 
@@ -21,6 +22,7 @@ export default function RandomListClient({
   seriesOptions: string[];
 }) {
   const [series, setSeries] = useState("전체");
+  const [lineupImage, setLineupImage] = useState<string | null>(null);
   const [sort, setSort] = useState<SortValue>("newest");
   const [itemType, setItemType] = useState("전체");
   const [query, setQuery] = useState("");
@@ -132,10 +134,19 @@ export default function RandomListClient({
                 </div>
 
                 <div style={titleStyle}>{item.item_name || "제목 없음"}</div>
+                {item.lineup_image_url && <button type="button" onClick={() => setLineupImage(item.lineup_image_url)} style={lineupButtonStyle}>라인업 보기 ↗</button>}
               </div>
             </article>
           ))}
         </section>
+      )}
+      {lineupImage && (
+        <div role="presentation" onClick={() => setLineupImage(null)} style={modalBackdropStyle}>
+          <div role="dialog" aria-modal="true" aria-label="라인업 사진" onClick={(e) => e.stopPropagation()} style={modalStyle}>
+            <button type="button" aria-label="닫기" onClick={() => setLineupImage(null)} style={closeButtonStyle}>×</button>
+            <img src={lineupImage} alt="상품 라인업" style={modalImageStyle} />
+          </div>
+        </div>
       )}
     </>
   );
@@ -188,14 +199,14 @@ const imageWrapStyle: React.CSSProperties = {
   width: "100%",
   aspectRatio: "1 / 1.13",
   overflow: "hidden",
-  background: "#f5f5f5",
+  background: "#cfe5ff",
 };
 
 const imageStyle: React.CSSProperties = {
   width: "100%",
   height: "100%",
   display: "block",
-  objectFit: "cover",
+  objectFit: "contain",
 };
 
 const emptyImageStyle: React.CSSProperties = {
@@ -255,3 +266,4 @@ const titleStyle: React.CSSProperties = {
   fontWeight: 900,
   wordBreak: "keep-all",
 };
+\nconst lineupButtonStyle: React.CSSProperties = { marginTop: 9, width: "100%", padding: "9px 8px", borderRadius: 9, border: "1.5px solid #111", background: "#dcecff", color: "#111", fontWeight: 900, cursor: "pointer" };\nconst modalBackdropStyle: React.CSSProperties = { position: "fixed", inset: 0, zIndex: 9999, background: "rgba(0,0,0,.75)", display: "flex", alignItems: "center", justifyContent: "center", padding: 16 };\nconst modalStyle: React.CSSProperties = { position: "relative", width: "100%", maxWidth: 760, maxHeight: "90dvh", borderRadius: 14, background: "#cfe5ff", padding: "48px 12px 12px", display: "flex", justifyContent: "center" };\nconst modalImageStyle: React.CSSProperties = { display: "block", maxWidth: "100%", maxHeight: "calc(90dvh - 70px)", objectFit: "contain" };\nconst closeButtonStyle: React.CSSProperties = { position: "absolute", top: 8, right: 10, width: 34, height: 34, borderRadius: "50%", border: "2px solid #111", background: "#fff", fontSize: 26, lineHeight: "26px", cursor: "pointer" };\n
