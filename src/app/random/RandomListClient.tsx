@@ -266,4 +266,9 @@ const titleStyle: React.CSSProperties = {
   fontWeight: 900,
   wordBreak: "keep-all",
 };
-\nconst lineupButtonStyle: React.CSSProperties = { marginTop: 9, width: "100%", padding: "9px 8px", borderRadius: 9, border: "1.5px solid #111", background: "#dcecff", color: "#111", fontWeight: 900, cursor: "pointer" };\nconst modalBackdropStyle: React.CSSProperties = { position: "fixed", inset: 0, zIndex: 9999, background: "rgba(0,0,0,.75)", display: "flex", alignItems: "center", justifyContent: "center", padding: 16 };\nconst modalStyle: React.CSSProperties = { position: "relative", width: "100%", maxWidth: 760, maxHeight: "90dvh", borderRadius: 14, background: "#cfe5ff", padding: "48px 12px 12px", display: "flex", justifyContent: "center" };\nconst modalImageStyle: React.CSSProperties = { display: "block", maxWidth: "100%", maxHeight: "calc(90dvh - 70px)", objectFit: "contain" };\nconst closeButtonStyle: React.CSSProperties = { position: "absolute", top: 8, right: 10, width: 34, height: 34, borderRadius: "50%", border: "2px solid #111", background: "#fff", fontSize: 26, lineHeight: "26px", cursor: "pointer" };\n
+
+const lineupButtonStyle: React.CSSProperties = { marginTop: 9, width: "100%", padding: "9px 8px", borderRadius: 9, border: "1.5px solid #111", background: "#dcecff", color: "#111", fontWeight: 900, cursor: "pointer" };
+const modalBackdropStyle: React.CSSProperties = { position: "fixed", inset: 0, zIndex: 9999, background: "rgba(0,0,0,.75)", display: "flex", alignItems: "center", justifyContent: "center", padding: 16 };
+const modalStyle: React.CSSProperties = { position: "relative", width: "100%", maxWidth: 760, maxHeight: "90dvh", borderRadius: 14, background: "#cfe5ff", padding: "48px 12px 12px", display: "flex", justifyContent: "center" };
+const modalImageStyle: React.CSSProperties = { display: "block", maxWidth: "100%", maxHeight: "calc(90dvh - 70px)", objectFit: "contain" };
+const closeButtonStyle: React.CSSProperties = { position: "absolute", top: 8, right: 10, width: 34, height: 34, borderRadius: "50%", border: "2px solid #111", background: "#fff", fontSize: 26, lineHeight: "26px", cursor: "pointer" };\n
