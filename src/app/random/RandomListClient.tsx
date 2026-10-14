@@ -22,6 +22,8 @@ export default function RandomListClient({
 }) {
   const [series, setSeries] = useState("전체");
   const [sort, setSort] = useState<SortValue>("newest");
+  const [itemType, setItemType] = useState("전체");
+  const [query, setQuery] = useState("");
 
   const seriesList = useMemo(() => {
     const values = Array.from(
@@ -35,9 +37,13 @@ export default function RandomListClient({
     return ["전체", ...values];
   }, [initialItems, seriesOptions]);
 
+  const typeList = useMemo(() => ["전체", ...Array.from(new Set(initialItems.map((item) => (item.item_type ?? "").trim()).filter(Boolean))).sort((a, b) => a.localeCompare(b, "ko"))], [initialItems]);
+
   const items = useMemo(() => {
     const filtered = initialItems.filter(
-      (item) => series === "전체" || item.series_name === series
+      (item) => (series === "전체" || item.series_name === series) &&
+        (itemType === "전체" || item.item_type?.trim() === itemType) &&
+        [item.item_name, item.series_name, item.item_type].some((value) => (value ?? "").toLocaleLowerCase("ko").includes(query.trim().toLocaleLowerCase("ko")))
     );
 
     return [...filtered].sort((a, b) => {
@@ -60,10 +66,11 @@ export default function RandomListClient({
         new Date(a.created_at ?? 0).getTime()
       );
     });
-  }, [initialItems, series, sort]);
+  }, [initialItems, series, itemType, query, sort]);
 
   return (
     <>
+      <input type="search" value={query} onChange={(e) => setQuery(e.target.value)} placeholder="빵 이름, 애니, 굿즈 검색" aria-label="랜덤빵 검색" style={{...selectStyle, marginTop: 14, boxSizing: "border-box"}} />
       <div style={toolBarStyle}>
         <select
           value={series}
@@ -78,6 +85,9 @@ export default function RandomListClient({
           ))}
         </select>
 
+        <select value={itemType} onChange={(e) => setItemType(e.target.value)} aria-label="굿즈 종류 필터" style={selectStyle}>
+          {typeList.map((value) => <option key={value} value={value}>{value === "전체" ? "전체 굿즈" : value}</option>)}
+        </select>
         <select
           value={sort}
           onChange={(e) => setSort(e.target.value as SortValue)}
@@ -94,7 +104,7 @@ export default function RandomListClient({
 
       {items.length === 0 ? (
         <div className="delivery-empty" style={{ marginTop: 16, padding: "48px 15px" }}>
-          판매중인 랜깡이 없어요.
+          검색 조건에 맞는 랜덤빵이 없어요.
         </div>
       ) : (
         <section style={gridStyle}>
@@ -104,7 +114,7 @@ export default function RandomListClient({
                 {item.image_url ? (
                   <img
                     src={item.image_url}
-                    alt={item.item_name ?? "랜깡 이미지"}
+                    alt={item.item_name ?? "랜덤빵 이미지"}
                     style={imageStyle}
                     loading="lazy"
                   />
