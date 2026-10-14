@@ -1,4 +1,5 @@
 import RandomListClient from "./RandomListClient";
+import { createServiceRoleClient } from "@/lib/supabase/server";
 import { getPublicSaleItems, type PublicSaleItem } from "@/lib/public-sale-inventory";
 
 export const dynamic = "force-dynamic";
@@ -7,9 +8,18 @@ export const revalidate = 0;
 export default async function RandomPage() {
   let data: PublicSaleItem[] = [];
   let error: Error | null = null;
+  let seriesOptions: string[] = [];
 
   try {
-    data = await getPublicSaleItems("display");
+    const [items, categories] = await Promise.all([
+      getPublicSaleItems("display"),
+      createServiceRoleClient().from("inventory_items").select("series_name"),
+    ]);
+    data = items;
+    if (categories.error) throw categories.error;
+    seriesOptions = Array.from(new Set((categories.data ?? [])
+      .map((row) => String(row.series_name ?? "").trim())
+      .filter(Boolean))).sort((a, b) => a.localeCompare(b, "ko"));
   } catch (caught) {
     error = caught instanceof Error ? caught : new Error("목록 조회 실패");
   }
@@ -34,7 +44,7 @@ export default async function RandomPage() {
             </div>
           </div>
         ) : (
-          <RandomListClient initialItems={data ?? []} />
+          <RandomListClient initialItems={data ?? []} seriesOptions={seriesOptions} />
         )}
       </section>
 
