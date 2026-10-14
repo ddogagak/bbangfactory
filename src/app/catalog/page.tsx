@@ -46,7 +46,7 @@ export default async function CatalogPage() {
         <a href="/" className="back-button">←</a>
         <div>
           <p className="delivery-kicker">DOPAMINE BBANG FACTORY</p>
-          <h1>COLLECTION</h1>
+          <h1>SOLDOUT 빵</h1>
         </div>
         <span className="head-bolt">ϟ</span>
       </header>
@@ -64,8 +64,8 @@ export default async function CatalogPage() {
       <nav className="bottom-nav">
         <a href="/">HOME</a>
         <a href="/delivery">배송</a>
-        <a href="/random">랜깡LIST</a>
-        <a className="active" href="/catalog">COLLECTION</a>
+        <a href="/random">랜덤빵 LIST</a>
+        <a className="active" href="/catalog">SOLDOUT 빵</a>
       </nav>
     </main>
   );
