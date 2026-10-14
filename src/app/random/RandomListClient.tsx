@@ -8,6 +8,7 @@ type RandomItem = {
   item_type: string | null;
   series_name: string | null;
   image_url: string | null;
+  lineup_image_url?: string | null;
   created_at: string | null;
 };
 
@@ -21,6 +22,7 @@ export default function RandomListClient({
   seriesOptions: string[];
 }) {
   const [series, setSeries] = useState("전체");
+  const [lineupImage, setLineupImage] = useState<string | null>(null);
   const [sort, setSort] = useState<SortValue>("newest");
   const [itemType, setItemType] = useState("전체");
   const [query, setQuery] = useState("");
@@ -132,11 +134,22 @@ export default function RandomListClient({
                 </div>
 
                 <div style={titleStyle}>{item.item_name || "제목 없음"}</div>
+                {item.lineup_image_url ? (
+                  <button type="button" style={lineupButtonStyle} onClick={() => setLineupImage(item.lineup_image_url ?? null)}>라인업 보기 ↗</button>
+                ) : null}
               </div>
             </article>
           ))}
         </section>
       )}
+      {lineupImage ? (
+        <div style={lineupBackdropStyle} onClick={() => setLineupImage(null)}>
+          <div role="dialog" aria-modal="true" aria-label="라인업 이미지" style={lineupDialogStyle} onClick={(event) => event.stopPropagation()}>
+            <button type="button" aria-label="라인업 닫기" style={lineupCloseStyle} onClick={() => setLineupImage(null)}>×</button>
+            <img src={lineupImage} alt="상품 라인업 이미지" style={lineupImageStyle} />
+          </div>
+        </div>
+      ) : null}
     </>
   );
 }
@@ -188,7 +201,7 @@ const imageWrapStyle: React.CSSProperties = {
   width: "100%",
   aspectRatio: "1 / 1.13",
   overflow: "hidden",
-  background: "#cfe5ff",
+  background: "#fff",
 };
 
 const imageStyle: React.CSSProperties = {
@@ -254,4 +267,29 @@ const titleStyle: React.CSSProperties = {
   lineHeight: 1.45,
   fontWeight: 900,
   wordBreak: "keep-all",
+};
+
+const lineupButtonStyle: React.CSSProperties = {
+  display: "block", marginTop: 8, padding: "7px 10px", width: "100%",
+  border: "1px solid #111", borderRadius: 8, background: "#fff",
+  color: "#111", fontSize: 12, fontWeight: 800, cursor: "pointer",
+};
+const lineupBackdropStyle: React.CSSProperties = {
+  position: "fixed", inset: 0, zIndex: 9999, padding: 16,
+  display: "flex", alignItems: "center", justifyContent: "center",
+  background: "rgba(0, 0, 0, 0.75)",
+};
+const lineupDialogStyle: React.CSSProperties = {
+  position: "relative", width: "100%", maxWidth: 720, maxHeight: "90dvh",
+  padding: "50px 12px 12px", borderRadius: 14, background: "#fff",
+  display: "flex", justifyContent: "center",
+};
+const lineupCloseStyle: React.CSSProperties = {
+  position: "absolute", top: 8, right: 10, width: 34, height: 34,
+  border: "1px solid #111", borderRadius: 18, background: "#fff",
+  fontSize: 25, cursor: "pointer",
+};
+const lineupImageStyle: React.CSSProperties = {
+  display: "block", maxWidth: "100%", maxHeight: "calc(90dvh - 70px)",
+  objectFit: "contain",
 };
