@@ -10,6 +10,7 @@ export type PublicSaleItem = {
   item_type: string | null;
   series_name: string | null;
   image_url: string | null;
+  lineup_image_url: string | null;
   created_at: string | null;
 };
 
@@ -42,7 +43,7 @@ export async function getPublicSaleItems(mode: "display" | "completed"): Promise
   if (sourcingIds.length) {
     const { data, error } = await supabase
       .from("inventory_items")
-      .select("id,item_name,item_type,series_name,image_url")
+      .select("id,item_name,item_type,series_name,image_url,lineup_image_url")
       .in("id", sourcingIds);
     if (error) throw error;
     sourcingRows = data ?? [];
@@ -74,6 +75,7 @@ export async function getPublicSaleItems(mode: "display" | "completed"): Promise
       item_type: sourcing?.item_type || null,
       series_name: item.series_name || sourcing?.series_name || null,
       image_url: imageUrl,
+      lineup_image_url: sourcing?.lineup_image_url || null,
       created_at: mode === "completed"
         ? ledger?.sold_out_at || item.created_at || item.order_date || null
         : item.created_at || item.order_date || null,
