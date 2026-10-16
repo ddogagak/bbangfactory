@@ -11,6 +11,7 @@ export type PublicSaleItem = {
   series_name: string | null;
   image_url: string | null;
   lineup_image_url: string | null;
+  public_comment: string | null;
   created_at: string | null;
 };
 
@@ -24,7 +25,7 @@ export async function getPublicSaleItems(mode: "display" | "completed"): Promise
       .eq("order_status", "입고완료"),
     supabase
       .from("purchase_sale_inventory")
-      .select("purchase_item_id,stock_status,sale_memo,sold_out_at"),
+      .select("*"),
   ]);
 
   if (orderError) throw orderError;
@@ -76,6 +77,7 @@ export async function getPublicSaleItems(mode: "display" | "completed"): Promise
       series_name: item.series_name || sourcing?.series_name || null,
       image_url: imageUrl,
       lineup_image_url: sourcing?.lineup_image_url || null,
+      public_comment: String(ledger?.public_comment || "").replace(/[\r\n\t]+/g, " ").trim() || null,
       created_at: mode === "completed"
         ? ledger?.sold_out_at || item.created_at || item.order_date || null
         : item.created_at || item.order_date || null,
