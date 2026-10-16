@@ -36,6 +36,7 @@ export default async function RandomPage() {
       </header>
 
       <section className="delivery-content">
+        <p style={{ margin: "0 0 4px", fontSize: 13, lineHeight: 1.4, fontWeight: 800, color: "var(--blue-dark)" }}>입고 완료된 빵 리스트입니다</p>
         {error ? (
           <div className="delivery-empty" style={{ marginTop: 30, padding: "50px 15px" }}>
             랜덤빵 목록을 불러오지 못했어요.
