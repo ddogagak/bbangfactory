@@ -52,6 +52,7 @@ export default async function CatalogPage() {
       </header>
 
       <section className="delivery-content">
+        <p style={{ margin: "0 0 4px", fontSize: 13, lineHeight: 1.4, fontWeight: 800, color: "var(--blue-dark)" }}>품절된 빵 리스트 입니다.</p>
         {error ? (
           <div className="delivery-empty" style={{ marginTop: 16, padding: "48px 15px" }}>
             컬렉션을 불러오지 못했어요.
