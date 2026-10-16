@@ -9,6 +9,7 @@ type CollectionItem = {
   series_name: string | null;
   image_url: string | null;
   lineup_image_url?: string | null;
+  public_comment?: string | null;
   created_at: string | null;
 };
 
@@ -122,6 +123,7 @@ export default function CollectionListClient({
                 </div>
 
                 <div style={titleStyle}>{item.item_name || "제목 없음"}</div>
+                {item.public_comment ? <div style={{marginTop:6,padding:"5px 7px",borderRadius:6,background:"#fff7db",fontSize:11,lineHeight:1.35,fontWeight:700,color:"#173d91",display:"-webkit-box",WebkitLineClamp:2,WebkitBoxOrient:"vertical",overflow:"hidden",wordBreak:"break-word"}}>{item.public_comment}</div> : null}
                 {item.lineup_image_url ? (
                   <button type="button" style={lineupButtonStyle} onClick={() => setLineupImage(item.lineup_image_url ?? null)}>라인업 보기 ↗</button>
                 ) : null}
