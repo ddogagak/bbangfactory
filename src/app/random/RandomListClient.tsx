@@ -7,6 +7,7 @@ type RandomItem = {
   item_name: string | null;
   item_type: string | null;
   series_name: string | null;
+  series_tags?: string[];
   image_url: string | null;
   lineup_image_url?: string | null;
   public_comment?: string | null;
@@ -14,6 +15,8 @@ type RandomItem = {
 };
 
 type SortValue = "newest" | "title" | "series";
+
+const getSeriesTags = (item: RandomItem) => item.series_tags?.length ? item.series_tags : item.series_name ? [item.series_name] : [];
 
 export default function RandomListClient({
   initialItems,
@@ -33,7 +36,7 @@ export default function RandomListClient({
   const seriesList = useMemo(() => {
     const values = Array.from(
       new Set(
-        [...seriesOptions, ...initialItems.map((item) => item.series_name ?? "")]
+        [...seriesOptions, ...initialItems.flatMap(getSeriesTags)]
           .map((value) => value.trim())
           .filter(Boolean)
       )
@@ -46,9 +49,9 @@ export default function RandomListClient({
 
   const items = useMemo(() => {
     const filtered = initialItems.filter(
-      (item) => (series === "전체" || item.series_name === series) &&
+      (item) => (series === "전체" || getSeriesTags(item).some(tag => tag.trim() === series)) &&
         (itemType === "전체" || item.item_type?.trim() === itemType) &&
-        [item.item_name, item.series_name, item.item_type].some((value) => (value ?? "").toLocaleLowerCase("ko").includes(query.trim().toLocaleLowerCase("ko")))
+        [item.item_name, ...getSeriesTags(item), item.item_type].some((value) => (value ?? "").toLocaleLowerCase("ko").includes(query.trim().toLocaleLowerCase("ko")))
     );
 
     return [...filtered].sort((a, b) => {
@@ -130,7 +133,7 @@ export default function RandomListClient({
 
               <div style={mode === "arriving" ? {...bodyStyle, padding: "6px 8px 8px"} : bodyStyle}>
                 <div style={mode === "arriving" ? {...tagRowStyle, marginBottom: 0} : tagRowStyle}>
-                  <span style={seriesTagStyle}>{item.series_name || "기타"}</span>
+                  {(getSeriesTags(item).length ? getSeriesTags(item) : ["기타"]).map(tag => <span key={tag} style={seriesTagStyle}>{tag}</span>)}
                   {item.item_type ? (
                     <span style={typeTagStyle}>{item.item_type}</span>
                   ) : null}

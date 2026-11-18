@@ -7,6 +7,7 @@ type CollectionItem = {
   item_name: string | null;
   item_type: string | null;
   series_name: string | null;
+  series_tags?: string[];
   image_url: string | null;
   lineup_image_url?: string | null;
   public_comment?: string | null;
@@ -14,6 +15,8 @@ type CollectionItem = {
 };
 
 type SortValue = "newest" | "title" | "series";
+
+const getSeriesTags = (item: CollectionItem) => item.series_tags?.length ? item.series_tags : item.series_name ? [item.series_name] : [];
 
 export default function CollectionListClient({
   initialItems,
@@ -28,7 +31,7 @@ export default function CollectionListClient({
     const values = Array.from(
       new Set(
         initialItems
-          .map((item) => item.series_name?.trim())
+          .flatMap(getSeriesTags).map((tag) => tag.trim())
           .filter((value): value is string => Boolean(value))
       )
     ).sort((a, b) => a.localeCompare(b, "ko"));
@@ -38,7 +41,7 @@ export default function CollectionListClient({
 
   const items = useMemo(() => {
     const filtered = initialItems.filter(
-      (item) => series === "전체" || item.series_name === series
+      (item) => series === "전체" || getSeriesTags(item).some(tag => tag.trim() === series)
     );
 
     return [...filtered].sort((a, b) => {
@@ -116,7 +119,7 @@ export default function CollectionListClient({
 
               <div style={bodyStyle}>
                 <div style={tagRowStyle}>
-                  <span style={seriesTagStyle}>{item.series_name || "기타"}</span>
+                  {(getSeriesTags(item).length ? getSeriesTags(item) : ["기타"]).map(tag => <span key={tag} style={seriesTagStyle}>{tag}</span>)}
                   {item.item_type ? (
                     <span style={typeTagStyle}>{item.item_type}</span>
                   ) : null}

@@ -9,6 +9,7 @@ export type PublicSaleItem = {
   item_name: string | null;
   item_type: string | null;
   series_name: string | null;
+  series_tags?: string[];
   image_url: string | null;
   lineup_image_url: string | null;
   public_comment: string | null;
@@ -18,7 +19,7 @@ export type PublicSaleItem = {
 export async function getPublicSaleItems(mode: "display" | "completed"): Promise<PublicSaleItem[]> {
   const supabase = createServiceRoleClient();
 
-  const [{ data: orders, error: orderError }, { data: ledgers, error: ledgerError }] = await Promise.all([
+  const [{ data: orders, error: orderError }, { data: ledgers, error: ledgerError }, boxesResult] = await Promise.all([
     supabase
       .from("purchase_orders")
       .select("ordered_at,purchase_items(id,product_name,display_name_ko,image_url,sourcing_inventory_id,series_name,created_at)")
@@ -26,10 +27,15 @@ export async function getPublicSaleItems(mode: "display" | "completed"): Promise
     supabase
       .from("purchase_sale_inventory")
       .select("*"),
+    supabase
+      .from("sale_random_boxes")
+      .select("id,title,image_url,public_comment,series_tags,created_at,updated_at")
+      .eq("view_status", mode),
   ]);
 
   if (orderError) throw orderError;
   if (ledgerError) throw ledgerError;
+  if (boxesResult.error) throw boxesResult.error;
 
   const ledgerByItemId = new Map((ledgers ?? []).map((row: any) => [String(row.purchase_item_id), row]));
   const purchaseItems = (orders ?? []).flatMap((order: any) =>
@@ -52,7 +58,7 @@ export async function getPublicSaleItems(mode: "display" | "completed"): Promise
 
   const sourcingById = new Map(sourcingRows.map((row: any) => [String(row.id), row]));
 
-  return purchaseItems.flatMap((item: any) => {
+  const standardItems: PublicSaleItem[] = purchaseItems.flatMap((item: any) => {
     const sourcing: any = sourcingById.get(String(item.sourcing_inventory_id || "")) || null;
     const ledger: any = ledgerByItemId.get(String(item.id)) || null;
     const imageUrl = item.image_url || sourcing?.image_url || null;
@@ -83,4 +89,21 @@ export async function getPublicSaleItems(mode: "display" | "completed"): Promise
         : item.created_at || item.order_date || null,
     }];
   });
+
+  const randomBoxes: PublicSaleItem[] = (boxesResult.data ?? []).map((box) => {
+    const seriesTags = Array.from(new Set<string>((box.series_tags ?? []).map((tag: string) => tag.trim()).filter(Boolean)));
+    return {
+      id: `random-box-${box.id}`,
+      item_name: box.title || null,
+      item_type: "랜깡",
+      series_name: seriesTags[0] || "랜덤박스",
+      series_tags: seriesTags,
+      image_url: box.image_url || null,
+      lineup_image_url: box.image_url || null,
+      public_comment: String(box.public_comment || "").replace(/[\r\n\t]+/g, " ").trim() || null,
+      created_at: mode === "completed" ? box.updated_at || box.created_at : box.created_at,
+    };
+  });
+
+  return [...standardItems, ...randomBoxes];
 }
