@@ -45,10 +45,15 @@ export default function Home() {
             <p className="eyebrow">SOLD OUT</p><h2>SOLDOUT 빵</h2><p>판매 완료된 빵 모아보기</p><span className="arrow light">→</span>
           </a>
         </div>
+        <a className="panel panel-wide arriving-panel" href="/arriving">
+          <div className="panel-icon oven-icon" aria-hidden="true"><span>♨</span></div>
+          <div><p className="eyebrow">ARRIVING SOON</p><h2>빵굽는중</h2><p>입고 예정인 빵 미리보기</p></div>
+          <span className="arrow">→</span>
+        </a>
         <div className="mini-factory"><Breads count={7} /></div>
       </section>
       <nav className="bottom-nav">
-        <a className="active" href="/">HOME</a><a href="/delivery">배송</a><a href="/random">랜덤빵 LIST</a><a href="/catalog">SOLDOUT 빵</a>
+        <a className="active" href="/">HOME</a><a href="/delivery">배송</a><a href="/random">랜덤빵 LIST</a><a href="/arriving">빵굽는중</a><a href="/catalog">SOLDOUT 빵</a>
       </nav>
     </main>
   );

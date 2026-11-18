@@ -53,6 +53,7 @@ export default async function RandomPage() {
         <a href="/">HOME</a>
         <a href="/delivery">배송</a>
         <a className="active" href="/random">랜덤빵 LIST</a>
+        <a href="/arriving">빵굽는중</a>
         <a href="/catalog">SOLDOUT 빵</a>
       </nav>
     </main>

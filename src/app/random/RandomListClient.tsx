@@ -18,9 +18,11 @@ type SortValue = "newest" | "title" | "series";
 export default function RandomListClient({
   initialItems,
   seriesOptions,
+  mode = "random",
 }: {
   initialItems: RandomItem[];
   seriesOptions: string[];
+  mode?: "random" | "arriving";
 }) {
   const [series, setSeries] = useState("전체");
   const [lineupImage, setLineupImage] = useState<string | null>(null);
@@ -73,7 +75,7 @@ export default function RandomListClient({
 
   return (
     <>
-      <input type="search" value={query} onChange={(e) => setQuery(e.target.value)} placeholder="빵 이름, 애니, 굿즈 검색" aria-label="랜덤빵 검색" style={{...selectStyle, marginTop: 14, boxSizing: "border-box"}} />
+      <input type="search" value={query} onChange={(e) => setQuery(e.target.value)} placeholder="빵 이름, 애니, 굿즈 검색" aria-label={mode === "arriving" ? "입고 예정 빵 검색" : "랜덤빵 검색"} style={{...selectStyle, marginTop: 14, boxSizing: "border-box"}} />
       <div style={toolBarStyle}>
         <select
           value={series}
@@ -107,13 +109,14 @@ export default function RandomListClient({
 
       {items.length === 0 ? (
         <div className="delivery-empty" style={{ marginTop: 16, padding: "48px 15px" }}>
-          검색 조건에 맞는 랜덤빵이 없어요.
+          {mode === "arriving" ? "조건에 맞는 입고 예정 빵이 없어요." : "검색 조건에 맞는 랜덤빵이 없어요."}
         </div>
       ) : (
         <section style={gridStyle}>
           {items.map((item) => (
             <article key={item.id} style={cardStyle}>
               <div style={imageWrapStyle}>
+                {mode === "arriving" && <span className="arriving-card-badge">굽는 중</span>}
                 {item.image_url ? (
                   <img
                     src={item.image_url}
