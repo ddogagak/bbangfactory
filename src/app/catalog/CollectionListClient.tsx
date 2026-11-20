@@ -23,6 +23,8 @@ export default function CollectionListClient({
 }: {
   initialItems: CollectionItem[];
 }) {
+  const [type,setType]=useState("전체");
+  const typeList=useMemo(()=>["전체",...new Set(initialItems.map(i=>i.item_type||"기타"))],[initialItems]);
   const [series, setSeries] = useState("전체");
   const [lineupImage, setLineupImage] = useState<string | null>(null);
   const [sort, setSort] = useState<SortValue>("newest");
@@ -41,7 +43,7 @@ export default function CollectionListClient({
 
   const items = useMemo(() => {
     const filtered = initialItems.filter(
-      (item) => series === "전체" || getSeriesTags(item).some(tag => tag.trim() === series)
+      (item) => (series === "전체" || getSeriesTags(item).some(tag => tag.trim() === series)) && (type==="전체"||(item.item_type||"기타")===type)
     );
 
     return [...filtered].sort((a, b) => {
@@ -64,7 +66,7 @@ export default function CollectionListClient({
         new Date(a.created_at ?? 0).getTime()
       );
     });
-  }, [initialItems, series, sort]);
+  }, [initialItems, series, sort,type]);
 
   return (
     <>
@@ -82,6 +84,7 @@ export default function CollectionListClient({
           ))}
         </select>
 
+        <select value={type} onChange={e=>setType(e.target.value)} aria-label="굿즈 유형 필터" style={selectStyle}>{typeList.map(v=><option key={v} value={v}>{v==="전체"?"전체 굿즈":v}</option>)}</select>
         <select
           value={sort}
           onChange={(e) => setSort(e.target.value as SortValue)}

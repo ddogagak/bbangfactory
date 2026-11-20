@@ -1,3 +1,5 @@
+import {resolveAnalysisType} from "@/lib/item-analysis-type";
+import {getTypeKeywords} from "@/lib/type-keywords-server";
 import CollectionListClient from "./CollectionListClient";
 import { getPublicSaleItems, type PublicSaleItem } from "@/lib/public-sale-inventory";
 
@@ -10,7 +12,7 @@ export default async function CatalogPage() {
   let error: Error | null = null;
 
   try {
-    const [completedItems, legacyItemsResult] = await Promise.all([
+    const [completedItems, legacyItemsResult,typeRules] = await Promise.all([
       getPublicSaleItems("completed"),
       (async () => {
         const { createServiceRoleClient } = await import("@/lib/supabase/server");
@@ -21,11 +23,12 @@ export default async function CatalogPage() {
           .in("status", ["판매중", "판매완료"])
           .order("created_at", { ascending: false });
       })(),
+      getTypeKeywords(),
     ]);
 
     if (legacyItemsResult.error) throw legacyItemsResult.error;
 
-    const merged = [...completedItems, ...(legacyItemsResult.data ?? [])] as PublicSaleItem[];
+    const merged = [...completedItems, ...(legacyItemsResult.data ?? []).map(item=>({...item,item_type:resolveAnalysisType(item.item_name,item.item_type,typeRules)}))] as PublicSaleItem[];
     const seen = new Set<string>();
     data = merged.filter((item) => {
       const key = [

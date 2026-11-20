@@ -1,4 +1,6 @@
 import "server-only";
+import {resolveAnalysisType,preferredRegisteredType} from "./item-analysis-type";
+import {getTypeKeywords} from "./type-keywords-server";
 
 import { createServiceRoleClient } from "@/lib/supabase/server";
 
@@ -19,10 +21,10 @@ export type PublicSaleItem = {
 export async function getPublicSaleItems(mode: "display" | "completed"): Promise<PublicSaleItem[]> {
   const supabase = createServiceRoleClient();
 
-  const [{ data: orders, error: orderError }, { data: ledgers, error: ledgerError }, boxesResult] = await Promise.all([
+  const [{ data: orders, error: orderError }, { data: ledgers, error: ledgerError }, boxesResult,typeRules] = await Promise.all([
     supabase
       .from("purchase_orders")
-      .select("ordered_at,purchase_items(id,product_name,display_name_ko,image_url,sourcing_inventory_id,series_name,created_at)")
+      .select("ordered_at,purchase_items(id,product_name,display_name_ko,image_url,sourcing_inventory_id,series_name,item_type,option_text,created_at)")
       .eq("order_status", "입고완료"),
     supabase
       .from("purchase_sale_inventory")
@@ -31,6 +33,7 @@ export async function getPublicSaleItems(mode: "display" | "completed"): Promise
       .from("sale_random_boxes")
       .select("id,title,image_url,public_comment,series_tags,created_at,updated_at")
       .eq("view_status", mode),
+    getTypeKeywords(),
   ]);
 
   if (orderError) throw orderError;
@@ -79,7 +82,7 @@ export async function getPublicSaleItems(mode: "display" | "completed"): Promise
     return [{
       id: String(item.id),
       item_name: item.display_name_ko || sourcing?.item_name || item.product_name || null,
-      item_type: sourcing?.item_type || null,
+      item_type: resolveAnalysisType([item.display_name_ko,sourcing?.item_name,item.product_name,item.option_text].filter(Boolean).join(" "),preferredRegisteredType(sourcing?.item_type,item.item_type),typeRules),
       series_name: item.series_name || sourcing?.series_name || null,
       image_url: imageUrl,
       lineup_image_url: sourcing?.lineup_image_url || null,
@@ -95,7 +98,7 @@ export async function getPublicSaleItems(mode: "display" | "completed"): Promise
     return {
       id: `random-box-${box.id}`,
       item_name: box.title || null,
-      item_type: "랜깡",
+      item_type: "랜덤박스",
       series_name: seriesTags[0] || "랜덤박스",
       series_tags: seriesTags,
       image_url: box.image_url || null,

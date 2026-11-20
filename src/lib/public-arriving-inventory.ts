@@ -1,4 +1,6 @@
 import "server-only";
+import {resolveAnalysisType,preferredRegisteredType} from "./item-analysis-type";
+import {getTypeKeywords} from "./type-keywords-server";
 
 import { createServiceRoleClient } from "@/lib/supabase/server";
 import type { PublicSaleItem } from "@/lib/public-sale-inventory";
@@ -9,13 +11,14 @@ const ARRIVING_STATUSES = ["주문완료", "현지배송", "배대지", "국제�
 export async function getPublicArrivingItems(): Promise<PublicSaleItem[]> {
   const supabase = createServiceRoleClient();
   const items: any[] = [];
+  const typeRules=await getTypeKeywords();
   const pageSize = 500;
 
   // Query item rows directly so the API's row limit cannot truncate the list.
   for (let offset = 0; ; offset += pageSize) {
     const { data, error } = await supabase
       .from("purchase_items")
-      .select("id,product_name,display_name_ko,image_url,sourcing_inventory_id,series_name,item_type,created_at,purchase_orders!inner(order_status)")
+      .select("id,product_name,display_name_ko,image_url,sourcing_inventory_id,series_name,item_type,option_text,created_at,purchase_orders!inner(order_status)")
       .in("purchase_orders.order_status", ARRIVING_STATUSES)
       .order("id", { ascending: true })
       .range(offset, offset + pageSize - 1);
@@ -41,7 +44,7 @@ export async function getPublicArrivingItems(): Promise<PublicSaleItem[]> {
     return {
       id: item.id,
       item_name: item.display_name_ko || sourcing?.item_name || item.product_name || null,
-      item_type: item.item_type || sourcing?.item_type || null,
+      item_type: resolveAnalysisType([item.display_name_ko,sourcing?.item_name,item.product_name,item.option_text].filter(Boolean).join(" "),preferredRegisteredType(sourcing?.item_type,item.item_type),typeRules),
       series_name: String(item.series_name || "").trim() === "기타"
         ? sourcing?.series_name || item.series_name
         : item.series_name || sourcing?.series_name || null,
